@@ -257,8 +257,9 @@
                 <div class="mt-4">
                     <label class="form-label">移轉或設典範圍</label>
                     <div class="grid grid-cols-2 gap-4">
-                        <input type="number" id="lvitRangeNum" class="form-input" placeholder="分子" value="1">
-                        <input type="number" id="lvitRangeDen" class="form-input" placeholder="分母" value="1">
+                        <!-- 【修改】移除 value="1" -->
+                        <input type="number" id="lvitRangeNum" class="form-input" placeholder="分子">
+                        <input type="number" id="lvitRangeDen" class="form-input" placeholder="分母">
                     </div>
                 </div>
                 <!-- 土地類型 -->
@@ -665,10 +666,12 @@
             const currValue_PerM2 = parseFloat(document.getElementById('lvitCurrValue_PerM2').value) || 0;
             const area = parseFloat(document.getElementById('lvitArea').value) || 0;
             const cpi = parseFloat(document.getElementById('lvitCPI').value) || 100;
+            // 【修改】如果空白，預設為 1
             const rangeNum = parseFloat(document.getElementById('lvitRangeNum').value) || 1;
             const rangeDen = parseFloat(document.getElementById('lvitRangeDen').value) || 1;
             
             if (area === 0 || currValue_PerM2 === 0 || rangeDen === 0) {
+                // 【修改】調整提示
                 alert("面積、本次現值 和 移轉分母 不得為 0");
                 return;
             }
@@ -721,8 +724,9 @@
             document.getElementById('lvitCurrValue_PerM2').value = '';
             document.getElementById('lvitArea').value = '';
             document.getElementById('lvitCPI').value = '';
-            document.getElementById('lvitRangeNum').value = '1';
-            document.getElementById('lvitRangeDen').value = '1';
+            // 【修改】清除時也設為空白
+            document.getElementById('lvitRangeNum').value = '';
+            document.getElementById('lvitRangeDen').value = '';
             document.getElementById('lvitResult').classList.add('hidden');
             // 重設年期
             populateDateSelects();
