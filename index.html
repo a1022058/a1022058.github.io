@@ -224,14 +224,8 @@
                         <select id="lvitPrevMonth" class="form-select" onchange="autoCalculateLvitCPI()"></select>
                     </div>
                 </div>
-                <!-- 本次移轉 -->
-                <div class="mt-4">
-                    <label class="form-label">本次移轉年期 (參考用)</label>
-                    <div class="grid grid-cols-2 gap-4">
-                        <select id="lvitCurrYear" class="form-select" onchange="autoCalculateLvitCPI()"></select>
-                        <select id="lvitCurrMonth" class="form-select" onchange="autoCalculateLvitCPI()"></select>
-                    </div>
-                </div>
+                <!-- 【移除】本次移轉年期 (參考用) 的區塊 -->
+                
                 <!-- 現值 -->
                 <div class="grid grid-cols-2 gap-4 mt-4">
                     <div>
@@ -251,13 +245,12 @@
                 <!-- CPI -->
                 <div class="mt-4">
                     <label for="lvitCPI" class="form-label">物價指數 (%) <span class="font-normal text-gray-500">(自動估算/可修改)</span></label>
-                    <input type="number" step="0.01" id="lvitCPI" class="form-input" placeholder="100">
+                    <input type="number" step="0.1" id="lvitCPI" class="form-input" placeholder="100">
                 </div>
                 <!-- 移轉範圍 -->
                 <div class="mt-4">
                     <label class="form-label">移轉或設典範圍</label>
                     <div class="grid grid-cols-2 gap-4">
-                        <!-- 【修改】移除 value="1" -->
                         <input type="number" id="lvitRangeNum" class="form-input" placeholder="分子">
                         <input type="number" id="lvitRangeDen" class="form-input" placeholder="分母">
                     </div>
@@ -322,7 +315,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     <div>
                         <label for="rectCPI" class="form-label">物價指數 (%) <span class="font-normal text-gray-500">(自動估算/可修改)</span></label>
-                        <input type="number" step="0.01" id="rectCPI" class="form-input" placeholder="100">
+                        <input type="number" step="0.1" id="rectCPI" class="form-input" placeholder="100">
                     </div>
                     <div>
                         <label for="rectCosts" class="form-label">相關費用 (元)</label>
@@ -463,16 +456,19 @@
         function populateDateSelects() {
             const yearSelect = document.getElementById('lvitPrevYear');
             const monthSelect = document.getElementById('lvitPrevMonth');
-            const currYearSelect = document.getElementById('lvitCurrYear');
-            const currMonthSelect = document.getElementById('lvitCurrMonth');
+            
+            // 【移除】currYearSelect 和 currMonthSelect
+            // const currYearSelect = document.getElementById('lvitCurrYear');
+            // const currMonthSelect = document.getElementById('lvitCurrMonth');
 
-            if (!yearSelect || !monthSelect || !currYearSelect || !currMonthSelect) return;
+            if (!yearSelect || !monthSelect) return; // 【修改】簡化檢查
 
             // 清空舊選項
             yearSelect.innerHTML = '';
             monthSelect.innerHTML = '';
-            currYearSelect.innerHTML = '';
-            currMonthSelect.innerHTML = '';
+            // 【移除】
+            // currYearSelect.innerHTML = '';
+            // currMonthSelect.innerHTML = '';
 
             // 填充月份
             for (let m = 1; m <= 12; m++) {
@@ -480,9 +476,10 @@
                 option.value = m;
                 option.textContent = `${m} 月`;
                 monthSelect.appendChild(option);
-
-                const option2 = option.cloneNode(true);
-                currMonthSelect.appendChild(option2);
+                
+                // 【移除】
+                // const option2 = option.cloneNode(true);
+                // currMonthSelect.appendChild(option2);
             }
 
             // 【關鍵修正】我們顯示 48~maxCpiYear 所有的年份
@@ -493,8 +490,9 @@
                 option.textContent = `民國 ${year} 年`;
                 yearSelect.appendChild(option);
 
-                const option2 = option.cloneNode(true);
-                currYearSelect.appendChild(option2);
+                // 【移除】
+                // const option2 = option.cloneNode(true);
+                // currYearSelect.appendChild(option2);
             }
             
             // 預設選取
@@ -502,9 +500,10 @@
             yearSelect.value = defaultPrevYear; // 預設前一年
             monthSelect.value = "1";
             
+            // 【移除】
             // 預設選取今年 (114) 和 本月 (9)
-            currYearSelect.value = maxCpiYear;
-            currMonthSelect.value = maxCpiMonth;
+            // currYearSelect.value = maxCpiYear;
+            // currMonthSelect.value = maxCpiMonth;
         }
 
 
@@ -574,45 +573,36 @@
         }
 
         // 輔助函式：法律規定，物價指數下跌不予調整
-        // 【關鍵邏輯修正】我們現在用的是「稅務專用表」，邏輯是 Index[Sell] / Index[Buy] * 100
-        // 但您給的表是 (Index[114年9月] / Index[Buy]) * 100
-        // 所以我們的計算必須是 (Value[Sell_Date] / Value[Buy_Date]) * 100
-        // 舉例： 買 113/1 (103.0), 賣 114/1 (100.3)
-        // 應為 (100.3 / 103.0) * 100 = 97.37 -> 依法改為 100
         function calculateCpiPercentage(prevCPI, currCPI) {
             if (prevCPI === 0 || !prevCPI || !currCPI) {
                 return 100; // 抓不到資料或分母為0，預設 100
             }
             
-            // 稅務專用表的邏輯是 (Index[Curr] / Index[Prev]) * 100
-            // 您的表格基期是 114年9月=100
-            // 所以 Value[Year, Month] = (Index[114年9月] / Index[Year, Month]) * 100
-            // 因此 (Value[Prev] / Value[Curr]) * 100
-            // = ( (Index[114/9] / Index[Prev]) * 100 ) / ( (Index[114/9] / Index[Curr]) * 100 ) * 100
-            // = ( Index[Curr] / Index[Prev] ) * 100
-            
+            // 稅務專用表的邏輯 (Value[Prev] / Value[Curr]) * 100
             let cpi = (prevCPI / currCPI) * 100;
 
             // 【關鍵修正】如果物價指數下跌，依法不予調整，視為 100%
             if (cpi < 100) {
                 cpi = 100;
             }
-            return cpi;
+            // 【修正】改為小數點後一位
+            return parseFloat(cpi.toFixed(1));
         }
 
         // 【月指數】LVIT 自動估算 CPI
         function autoCalculateLvitCPI() {
             const prevYear = parseInt(document.getElementById('lvitPrevYear').value);
             const prevMonth = parseInt(document.getElementById('lvitPrevMonth').value);
-            const currYear = parseInt(document.getElementById('lvitCurrYear').value);
-            const currMonth = parseInt(document.getElementById('lvitCurrMonth').value);
+            // 【關鍵修正】本次移轉年期，永遠抓資料庫最新的
+            const currYear = maxCpiYear;
+            const currMonth = maxCpiMonth;
+            
             const cpiInput = document.getElementById('lvitCPI');
 
             const prevCPI = getCPIValue(prevYear, prevMonth);
             const currCPI = getCPIValue(currYear, currMonth);
             
             let cpi = calculateCpiPercentage(prevCPI, currCPI);
-            // 【修改】改為小數點後一位
             cpiInput.value = cpi.toFixed(1);
         }
 
@@ -623,7 +613,7 @@
             const cpiInput = document.getElementById('rectCPI');
 
             if (!buyDateStr || !sellDateStr) {
-                cpiInput.value = (100).toFixed(2);
+                cpiInput.value = (100).toFixed(1);
                 return;
             }
 
@@ -651,12 +641,12 @@
                 const currCPI = getCPIValue(currYear, currMonth);
 
                 let cpi = calculateCpiPercentage(prevCPI, currCPI);
-                // 【修改】改為小數點後一位
+                // 【修正】改為小數點後一位
                 cpiInput.value = cpi.toFixed(1);
 
             } catch(e) {
                 console.error("日期轉換失敗:", e);
-                cpiInput.value = (100).toFixed(2);
+                cpiInput.value = (100).toFixed(1);
             }
         }
 
@@ -668,12 +658,10 @@
             const currValue_PerM2 = parseFloat(document.getElementById('lvitCurrValue_PerM2').value) || 0;
             const area = parseFloat(document.getElementById('lvitArea').value) || 0;
             const cpi = parseFloat(document.getElementById('lvitCPI').value) || 100;
-            // 【修改】如果空白，預設為 1
             const rangeNum = parseFloat(document.getElementById('lvitRangeNum').value) || 1;
             const rangeDen = parseFloat(document.getElementById('lvitRangeDen').value) || 1;
             
             if (area === 0 || currValue_PerM2 === 0 || rangeDen === 0) {
-                // 【修改】調整提示
                 alert("面積、本次現值 和 移轉分母 不得為 0");
                 return;
             }
@@ -726,7 +714,6 @@
             document.getElementById('lvitCurrValue_PerM2').value = '';
             document.getElementById('lvitArea').value = '';
             document.getElementById('lvitCPI').value = '';
-            // 【修改】清除時也設為空白
             document.getElementById('lvitRangeNum').value = '';
             document.getElementById('lvitRangeDen').value = '';
             document.getElementById('lvitResult').classList.add('hidden');
@@ -866,7 +853,6 @@
             const appContainer = document.getElementById('app-container');
 
             // 【關鍵】讀取 cpi_data.json
-            // 【修正】將 'cpi_data.json' 改為 './cpi_data.json' 來確保路徑正確
             fetch('./cpi_data.json')
                 .then(response => {
                     if (!response.ok) {
@@ -900,5 +886,4 @@
     </script>
 </body>
 </html>
-
 
