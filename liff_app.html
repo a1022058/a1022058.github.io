@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>房仲小幫手計算機</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: #f0f2f5;
+        }
+        .card {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-align: center;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        .form-input, .form-select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.2);
+        }
+        .result-box {
+            background-color: #f8f9fa;
+            border: 1px dashed #ced4da;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+        .result-title {
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 8px;
+        }
+        .result-amount {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #007bff;
+            margin-bottom: 4px;
+        }
+        .page-content {
+            display: none; /* 預設隱藏 */
+        }
+        .page-content.active {
+            display: block; /* 顯示當前頁面 */
+        }
+        .disclaimer {
+            font-size: 0.75rem;
+            color: #6c757d;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 20px;
+            line-height: 1.5;
+        }
+         /* 下拉選單樣式 */
+        #nav-menu {
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+         /* 標題顏色 */
+        #page-title.color-mortgage { color: #007bff; }
+        #page-title.color-deed-tax { color: #28a745; }
+        #page-title.color-lvit { color: #6f42c1; }
+        #page-title.color-rect { color: #fd7e14; }
+    </style>
+</head>
+<body class="p-4">
+
+    <header class="flex justify-between items-center mb-4">
+        <!-- 【修改】將標題改為您的名稱，並加入 LOGO (logo.png) -->
+        <div class="flex items-center gap-2">
+            <img src="logo.png" alt="Logo" class="h-8 w-8 rounded-lg" onerror="this.style.display='none'">
+            <h1 class="text-xl font-bold text-gray-800">房產計算通 | RealtyPro</h1>
+        </div>
+        <div class="relative">
+            <button onclick="toggleMenu()" class="p-2 rounded-full hover:bg-gray-200 focus:outline-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                </svg>
+            </button>
+            <div id="nav-menu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-10 opacity-0 transform scale-95" 
+                 onmouseleave="this.classList.add('opacity-0', 'scale-95'); this.classList.remove('opacity-100', 'scale-100'); setTimeout(() => this.classList.add('hidden'), 200);">
+                <a href="#" onclick="selectPage('mortgage')" class="block px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-t-lg">房貸試算</a>
+                <a href="#" onclick="selectPage('deed-tax')" class="block px-4 py-3 text-gray-700 hover:bg-gray-100">契稅試算</a>
+                <a href="#" onclick="selectPage('lvit')" class="block px-4 py-3 text-gray-700 hover:bg-gray-100">土地增值稅</a>
+                <a href="#" onclick="selectPage('rect')" class="block px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-b-lg">房地合一稅</a>
+            </div>
+        </div>
+    </header>
+
+    <h2 id="page-title" class="text-2xl font-bold mb-4 transition-colors duration-300"></h2>
+
+    <main id="main-content">
+        <!-- 頁面一：房貸試算 -->
+        <div id="page-mortgage" class="page-content card">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="mortgageAmount" class="form-label">貸款金額 (萬元)</label>
+                    <input type="number" id="mortgageAmount" class="form-input" placeholder="1000">
+                </div>
+                <div>
+                    <label for="mortgageYears" class="form-label">貸款年期 (年)</label>
+                    <input type="number" id="mortgageYears" class="form-input" value="30">
+                </div>
+                <div>
+                    <label for="mortgageRate" class="form-label">貸款利率 (%)</label>
+                    <input type="number" step="0.01" id="mortgageRate" class="form-input" value="2.1">
+                </div>
+            </div>
+            <div class="flex gap-4 mt-6">
+                <button onclick="calculateMortgage()" class="btn btn-primary w-full">開始試算</button>
+                <button onclick="clearMortgage()" class="btn btn-secondary w-full">清除資料</button>
+            </div>
+            <div id="mortgageResult" class="result-box mt-6 hidden">
+                <p class="result-title">本息均攤（月付金）</p>
+                <p class="result-amount">0 元</p>
+                <p class="text-sm text-gray-600">總利息支出約：<span id="mortgageTotalInterest">0</span> 元</p>
+            </div>
+            <p class="text-xs text-gray-500 mt-4">註：本試算僅為估算值，實際還款金額依各銀行最終核定為準。</p>
+        </div>
+
+        <!-- 頁面二：契稅試算 -->
+        <div id="page-deed-tax" class="page-content card">
+            <div class="grid grid-cols-1 gap-4">
+                <div>
+                    <label for="deedType" class="form-label">契稅種類</label>
+                    <select id="deedType" class="form-select">
+                        <option value="0.06" selected>買賣、贈與、占有 (6%)</option>
+                        <option value="0.04">典權 (4%)</option>
+                        <option value="0.02">交換、分割 (2%)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="deedValue" class="form-label">房屋評定現值 (萬元)</label>
+                    <input type="number" id="deedValue" class="form-input" placeholder="50">
+                </div>
+            </div>
+            <div class="flex gap-4 mt-6">
+                <button onclick="calculateDeedTax()" class="btn btn-primary w-full" style="background-color: #28a745; hover:bg-green-700">開始試算</button>
+                <button onclick="clearDeedTax()" class="btn btn-secondary w-full">清除資料</button>
+            </div>
+            <div id="deedTaxResult" class="result-box mt-6 hidden">
+                <p class="result-title">預估契稅金額</p>
+                <p class="result-amount" style="color: #28a745;">0 元</p>
+            </div>
+            <p class="text-xs text-gray-500 mt-4">註：實際稅額應以稅捐機關核定為準。房屋評定現值可參考房屋稅單。</p>
+        </div>
+
+        <!-- 頁面三：土地增值稅 -->
+        <div id="page-lvit" class="page-content card">
+            <!-- 前次移轉 -->
+            <div>
+                <label class="form-label">前次移轉年期 (參考用)</label>
+                <div class="grid grid-cols-2 gap-4">
+                    <select id="lvitPrevYear" class="form-select" onchange="autoCalculateLvitCPI()"></select>
+                    <select id="lvitPrevMonth" class="form-select" onchange="autoCalculateLvitCPI()"></select>
+                </div>
+            </div>
+            <!-- 本次移轉 -->
+            <div class="mt-4">
+                <label class="form-label">本次移轉年期 (參考用)</label>
+                <div class="grid grid-cols-2 gap-4">
+                    <select id="lvitCurrYear" class="form-select" onchange="autoCalculateLvitCPI()"></select>
+                    <select id="lvitCurrMonth" class="form-select" onchange="autoCalculateLvitCPI()"></select>
+                </div>
+            </div>
+            <!-- 現值 -->
+            <div class="grid grid-cols-2 gap-4 mt-4">
+                <div>
+                    <label for="lvitPrevValue_PerM2" class="form-label">前次現值 (元/m²)</label>
+                    <input type="number" id="lvitPrevValue_PerM2" class="form-input" placeholder="50000">
+                </div>
+                <div>
+                    <label for="lvitCurrValue_PerM2" class="form-label">本次現值 (元/m²)</label>
+                    <input type="number" id="lvitCurrValue_PerM2" class="form-input" placeholder="150000">
+                </div>
+            </div>
+             <!-- 面積 -->
+             <div class="mt-4">
+                <label for="lvitArea" class="form-label">土地宗地面積 (m²)</label>
+                <input type="number" id="lvitArea" class="form-input" placeholder="100">
+            </div>
+            <!-- CPI -->
+            <div class="mt-4">
+                <label for="lvitCPI" class="form-label">物價指數 (%) <span class="font-normal text-gray-500">(自動估算/可修改)</span></label>
+                <input type="number" step="0.01" id="lvitCPI" class="form-input" placeholder="100">
+            </div>
+            <!-- 移轉範圍 -->
+            <div class="mt-4">
+                <label class="form-label">移轉或設典範圍</label>
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="number" id="lvitRangeNum" class="form-input" placeholder="分子" value="1">
+                    <input type="number" id="lvitRangeDen" class="form-input" placeholder="分母" value="1">
+                </div>
+            </div>
+            <!-- 土地類型 -->
+            <div class="mt-4">
+                <label class="form-label">土地類型</label>
+                <div class="flex gap-4">
+                    <label class="flex items-center">
+                        <input type="radio" name="lvitLandType" value="city" class="form-radio" checked>
+                        <span class="ml-2">都市土地</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="radio" name="lvitLandType" value="non-city" class="form-radio">
+                        <span class="ml-2">非都市土地</span>
+                    </label>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">請參閱土地權狀影本的土地標示部之使用分區，使用地類別空白者，請點選都市土地。</p>
+            </div>
+            <!-- 按鈕 -->
+            <div class="flex gap-4 mt-6">
+                <button onclick="calculateLVIT()" class="btn btn-primary w-full" style="background-color: #6f42c1; hover:bg-purple-800">開始試算</button>
+                <button onclick="clearLVIT()" class="btn btn-secondary w-full">清除資料</button>
+            </div>
+            <!-- 結果 -->
+            <div id="lvitResult" class="result-box mt-6 hidden">
+                <p class="result-title">預估土地增值稅（一般稅率）</p>
+                <p class="result-amount" style="color: #6f42c1;">0 元</p>
+                <div class="text-sm text-gray-600 grid grid-cols-2 gap-2 mt-4">
+                    <p>漲價總數額： <span id="lvitIncrement" class="font-bold">0</span></p>
+                    <p>調整後基數： <span id="lvitBaseValue" class="font-bold">0</span></p>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-4">註：本試算未考量長期持有減徵。CPI (消費者物價指數) 係使用「範例資料庫」之月指數自動估算，若選用年份無資料 (如 105 年)，請手動查詢並填入。</p>
+        </div>
+
+        <!-- 頁面四：房地合一稅 -->
+        <div id="page-rect" class="page-content card">
+            <!-- 價格 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="rectSellPrice" class="form-label">房地成交價額 (元)</label>
+                    <input type="number" id="rectSellPrice" class="form-input" placeholder="20,000,000">
+                </div>
+                <div>
+                    <label for="rectBuyPrice" class="form-label">取得房地價款 (元)</label>
+                    <input type="number" id="rectBuyPrice" class="form-input" placeholder="10,000,000">
+                </div>
+            </div>
+            <!-- 日期 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                    <label for="rectBuyDate" class="form-label">買入日</label>
+                    <input type="date" id="rectBuyDate" class="form-input" onchange="autoCalculateRectCPI(); updateTaxRate();">
+                </div>
+                <div>
+                    <label for="rectSellDate" class="form-label">賣出日</label>
+                    <input type="date" id="rectSellDate" class="form-input" onchange="autoCalculateRectCPI(); updateTaxRate();">
+                </div>
+            </div>
+            <!-- CPI / 費用 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                    <label for="rectCPI" class="form-label">物價指數 (%) <span class="font-normal text-gray-500">(自動估算/可修改)</span></label>
+                    <input type="number" step="0.01" id="rectCPI" class="form-input" placeholder="100">
+                </div>
+                <div>
+                    <label for="rectCosts" class="form-label">相關費用 (元)</label>
+                    <input type="number" id="rectCosts" class="form-input" placeholder="售價3%，上限30萬">
+                </div>
+            </div>
+             <!-- 土地漲價 -->
+             <div class="mt-4">
+                <label for="rectLvitAmount" class="form-label">土地漲價總數額 (元)</label>
+                <input type="number" id="rectLvitAmount" class="form-input" placeholder="土增稅單上的數字">
+            </div>
+            <!-- 稅率 -->
+            <div class="mt-4">
+                <label class="form-label">適用稅率</label>
+                <div class="flex items-center gap-4 mb-2">
+                    <label class="flex items-center">
+                        <input type="radio" name="rectLocation" value="domestic" class="form-radio" checked onchange="updateTaxRate()">
+                        <span class="ml-2">境內</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="radio" name="rectLocation" value="foreign" class="form-radio" onchange="updateTaxRate()">
+                        <span class="ml-2">境外</span>
+                    </label>
+                </div>
+                <select id="rectTaxRateSelect" class="form-select">
+                    <!-- 一般境內 -->
+                    <option value="0.45" selected>【境內】持有期間2年以內 (45%)</option>
+                    <option value="0.35">【境內】超過2年，未逾5年 (35%)</option>
+                    <option value="0.20">【境內】超過5年，未逾10年 (20%)</option>
+                    <option value="0.15">【境內】超過10年 (15%)</option>
+                    <!-- 一般境外 -->
+                    <option value="0.45_foreign">【境外】持有期間2年以內 (45%)</option>
+                    <option value="0.35_foreign">【境外】超過2年 (35%)</option>
+                    <!-- 特殊 -->
+                    <option value="0.10_self_use">【特殊】符合自用住宅優惠 (免稅或10%)</option>
+                    <option value="0.20_special">【特殊】調職、離職等非自願性因素 (20%)</option>
+                    <option value="0.20_special_build">【特殊】自地自建或營利事業合建 (20%)</option>
+                    <option value="0.20_special_urban">【特殊】都市更新、危老重建 (20%)</option>
+                </select>
+            </div>
+             <!-- 按鈕 -->
+            <div class="flex gap-4 mt-6">
+                <button onclick="calculateRECT()" class="btn btn-primary w-full" style="background-color: #fd7e14; hover:bg-orange-600">開始試算</button>
+                <button onclick="clearRECT()" class="btn btn-secondary w-full">清除資料</button>
+            </div>
+            <!-- 結果 -->
+            <div id="rectResult" class="result-box mt-6 hidden">
+                <p class="result-title">預估房地合一稅</p>
+                <p class="result-amount" style="color: #fd7e14;">0 元</p>
+                <div class="text-sm text-gray-600 grid grid-cols-1 gap-2 mt-4">
+                    <p>課稅所得： <span id="rectIncome" class="font-bold">0</span></p>
+                    <p>持有期間： <span id="rectHoldYears" class="font-bold">N/A</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 免責聲明 -->
+        <footer class="disclaimer">
+            本試算頁面，係依所得稅法及其施行細則有關房地合一稅或虛擬稅額之計算公式試算，您瞭解本頁面僅供稅額概算之用，因實際情形所引用之物價指數等相關資料與實際核定時可能不同，或登記原因可能不同，或客戶申報資料有所疏漏等因素而有差異，概算結果僅供參考，且應繳納稅額仍應按稅捐稽徵機關核定之稅單金額為準，估算頁面茲就本頁面之試算結果不負擔保之責。
+        </footer>
+    </main>
+
+    <script>
+        // --- 全域變數 ---
+        // 這是「範例」資料庫。我們只放關鍵年份，以避免檔案過大導致「空白頁面」。
+        // 當使用者選到 105 年（範例中沒有），程式會抓不到資料，CPI會是 100，
+        // 這時使用者就需要「手動修改」CPI 欄位。
+        // 基期: 民國110年=100
+        const monthlyCpiData_110 = {
+            70: { 1: 58.75, 2: 59.27, 3: 59.18, 4: 58.97, 5: 59.08, 6: 59.38, 7: 60.05, 8: 60.67, 9: 60.52, 10: 60.33, 11: 59.94, 12: 59.85 },
+            80: { 1: 76.53, 2: 76.99, 3: 77.26, 4: 77.29, 5: 77.12, 6: 77.37, 7: 77.62, 8: 77.92, 9: 77.96, 10: 78.07, 11: 77.72, 12: 77.53 },
+            90: { 1: 94.62, 2: 95.03, 3: 95.27, 4: 95.21, 5: 95.12, 6: 95.17, 7: 95.03, 8: 95.00, 9: 94.02, 10: 93.84, 11: 93.63, 12: 93.67 },
+            100: { 1: 102.40, 2: 102.91, 3: 103.22, 4: 103.54, 5: 103.65, 6: 103.79, 7: 103.88, 8: 104.09, 9: 104.34, 10: 104.41, 11: 104.09, 12: 103.77 },
+            110: { 1: 100.00, 2: 100.41, 3: 100.72, 4: 101.42, 5: 101.63, 6: 101.81, 7: 101.99, 8: 102.66, 9: 102.82, 10: 103.11, 11: 103.38, 12: 103.14 },
+            111: { 1: 103.68, 2: 103.73, 3: 104.02, 4: 104.88, 5: 105.13, 6: 105.51, 7: 105.54, 8: 105.41, 9: 105.78, 10: 106.10, 11: 105.90, 12: 106.13 },
+            112: { 1: 106.96, 2: 106.39, 3: 106.60, 4: 107.31, 5: 107.24, 6: 107.41, 7: 107.54, 8: 108.06, 9: 108.74, 10: 109.13, 11: 108.84, 12: 108.87 },
+            113: { 1: 108.89, 2: 109.56, 3: 109.28, 4: 109.80, 5: 109.96, 6: 110.13, 7: 110.36, 8: 110.51, 9: 110.70, 10: 110.90, 11: 111.00, 12: 111.00 }, // 113年10月後的為估算
+            // 【關鍵】我們根據現在時間 (114年10月) 更新了114年的資料
+            // 這些是估算值，以確保114年有資料可抓
+            114: { 1: 109.8, 2: 109.9, 3: 110.0, 4: 110.1, 5: 110.2, 6: 110.3, 7: 110.4, 8: 110.5, 9: 110.6, 10: 110.7, 11: 110.8, 12: 110.9 }
+        };
+        // 【關鍵】我們把最大年份設為 114 (2025)
+        const maxCpiYear = 114;
+        // 【關鍵】我們把最大月份設為 10 (十月)
+        const maxCpiMonth = 10;
+
+
+        // --- 導航控制 ---
+        let currentPage = 'mortgage';
+
+        function toggleMenu() {
+            const menu = document.getElementById('nav-menu');
+            if (menu.classList.contains('hidden')) {
+                menu.classList.remove('hidden');
+                setTimeout(() => menu.classList.remove('opacity-0', 'scale-95'), 10);
+                setTimeout(() => menu.classList.add('opacity-100', 'scale-100'), 10);
+            } else {
+                menu.classList.remove('opacity-100', 'scale-100');
+                menu.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => menu.classList.add('hidden'), 200);
+            }
+        }
+
+        function selectPage(pageName) {
+            showPage(pageName);
+            toggleMenu();
+        }
+        
+        // 點擊外部關閉選單
+        document.addEventListener('click', function(event) {
+            const menu = document.getElementById('nav-menu');
+            const button = menu.previousElementSibling;
+            if (!menu.contains(event.target) && !button.contains(event.target) && !button.contains(event.target.parentElement)) {
+                if (!menu.classList.contains('hidden')) {
+                    toggleMenu();
+                }
+            }
+        });
+
+        function showPage(pageName) {
+            // 隱藏所有頁面
+            document.querySelectorAll('.page-content').forEach(page => {
+                page.classList.remove('active');
+            });
+            // 顯示目標頁面
+            const targetPage = document.getElementById(`page-${pageName}`);
+            if(targetPage) {
+                targetPage.classList.add('active');
+            }
+            
+            // 更新標題
+            const titleElement = document.getElementById('page-title');
+            let title = '';
+            let colorClass = '';
+            switch(pageName) {
+                case 'mortgage': title = '房貸試算'; colorClass = 'color-mortgage'; break;
+                case 'deed-tax': title = '契稅試算'; colorClass = 'color-deed-tax'; break;
+                case 'lvit': title = '土地增值稅試算'; colorClass = 'color-lvit'; break;
+                case 'rect': title = '房地合一稅試算'; colorClass = 'color-rect'; break;
+            }
+            titleElement.textContent = title;
+            titleElement.className = `text-2xl font-bold mb-4 transition-colors duration-300 ${colorClass}`;
+
+            currentPage = pageName;
+        }
+
+        // --- 數字格式化 ---
+        function formatMoney(value) {
+            if (isNaN(value) || value === null) return '0';
+            return Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        }
+
+        // --- 輔助函式：填充下拉選單 ---
+        function populateDateSelects() {
+            const yearSelect = document.getElementById('lvitPrevYear');
+            const monthSelect = document.getElementById('lvitPrevMonth');
+            const currYearSelect = document.getElementById('lvitCurrYear');
+            const currMonthSelect = document.getElementById('lvitCurrMonth');
+
+            if (!yearSelect || !monthSelect || !currYearSelect || !currMonthSelect) return;
+
+            // 清空舊選項
+            yearSelect.innerHTML = '';
+            monthSelect.innerHTML = '';
+            currYearSelect.innerHTML = '';
+            currMonthSelect.innerHTML = '';
+
+            // 填充月份
+            for (let m = 1; m <= 12; m++) {
+                const option = document.createElement('option');
+                option.value = m;
+                option.textContent = `${m} 月`;
+                monthSelect.appendChild(option);
+
+                const option2 = option.cloneNode(true);
+                currMonthSelect.appendChild(option2);
+            }
+
+            // 【關鍵修正】我們顯示 70~maxCpiYear 所有的年份
+            for (let year = maxCpiYear; year >= 70; year--) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = `民國 ${year} 年`;
+                yearSelect.appendChild(option);
+
+                const option2 = option.cloneNode(true);
+                currYearSelect.appendChild(option2);
+            }
+            
+            // 預設選取
+            let defaultPrevYear = (maxCpiYear - 1 < 70) ? 70 : maxCpiYear - 1;
+            yearSelect.value = defaultPrevYear; // 預設前一年
+            monthSelect.value = "1";
+            
+            // 預設選取今年 (114) 和 本月 (10)
+            currYearSelect.value = maxCpiYear;
+            currMonthSelect.value = maxCpiMonth;
+        }
+
+
+        // --- 房貸試算 ---
+        function calculateMortgage() {
+            let amount_wan = parseFloat(document.getElementById('mortgageAmount').value);
+            let years = parseInt(document.getElementById('mortgageYears').value);
+            let rate_percent = parseFloat(document.getElementById('mortgageRate').value);
+
+            if (isNaN(amount_wan) || isNaN(years) || isNaN(rate_percent) || amount_wan <= 0 || years <= 0 || rate_percent <= 0) {
+                alert("請輸入有效的數字！");
+                return;
+            }
+
+            let amount = amount_wan * 10000;
+            let monthly_rate = (rate_percent / 100) / 12;
+            let num_payments = years * 12;
+
+            // 本息均攤
+            let monthly_payment = amount * (monthly_rate * Math.pow(1 + monthly_rate, num_payments)) / (Math.pow(1 + monthly_rate, num_payments) - 1);
+            let total_interest = (monthly_payment * num_payments) - amount;
+
+            document.getElementById('mortgageResult').classList.remove('hidden');
+            document.querySelector('#mortgageResult .result-amount').textContent = `${formatMoney(monthly_payment)} 元`;
+            document.getElementById('mortgageTotalInterest').textContent = formatMoney(total_interest);
+        }
+
+        function clearMortgage() {
+            document.getElementById('mortgageAmount').value = '';
+            document.getElementById('mortgageYears').value = '30';
+            document.getElementById('mortgageRate').value = '2.1';
+            document.getElementById('mortgageResult').classList.add('hidden');
+        }
+
+        // --- 契稅試算 ---
+        function calculateDeedTax() {
+            let value_wan = parseFloat(document.getElementById('deedValue').value);
+            let rate = parseFloat(document.getElementById('deedType').value);
+
+            if (isNaN(value_wan) || isNaN(rate) || value_wan <= 0) {
+                alert("請輸入有效的房屋評定現值！");
+                return;
+            }
+
+            let value = value_wan * 10000;
+            let tax = value * rate;
+
+            document.getElementById('deedTaxResult').classList.remove('hidden');
+            document.querySelector('#deedTaxResult .result-amount').textContent = `${formatMoney(tax)} 元`;
+        }
+
+        function clearDeedTax() {
+            document.getElementById('deedValue').value = '';
+            document.getElementById('deedType').value = '0.06';
+            document.getElementById('deedTaxResult').classList.add('hidden');
+        }
+
+        // --- CPI 自動估算 (月指數) ---
+        // 輔助函式：從資料庫抓取CPI值
+        function getCPIValue(year, month) {
+            // 檢查年份和月份是否存在於範例資料庫
+            if (monthlyCpiData_110[year] && monthlyCpiData_110[year][month]) {
+                return monthlyCpiData_110[year][month];
+            }
+            // 抓不到資料（例如 105 年），回傳 null
+            return null;
+        }
+
+        // 輔助函式：法律規定，物價指數下跌不予調整
+        function calculateCpiPercentage(prevCPI, currCPI) {
+            if (prevCPI === 0 || !prevCPI || !currCPI) {
+                return 100; // 抓不到資料或分母為0，預設 100
+            }
+            let cpi = (currCPI / prevCPI) * 100;
+            // 【關鍵修正】如果物價指數下跌，依法不予調整，視為 100%
+            if (cpi < 100) {
+                cpi = 100;
+            }
+            return cpi;
+        }
+
+        // 【月指數】LVIT 自動估算 CPI
+        function autoCalculateLvitCPI() {
+            const prevYear = parseInt(document.getElementById('lvitPrevYear').value);
+            const prevMonth = parseInt(document.getElementById('lvitPrevMonth').value);
+            const currYear = parseInt(document.getElementById('lvitCurrYear').value);
+            const currMonth = parseInt(document.getElementById('lvitCurrMonth').value);
+            const cpiInput = document.getElementById('lvitCPI');
+
+            const prevCPI = getCPIValue(prevYear, prevMonth);
+            const currCPI = getCPIValue(currYear, currMonth);
+            
+            let cpi = calculateCpiPercentage(prevCPI, currCPI);
+            cpiInput.value = cpi.toFixed(2);
+        }
+
+        // 【月指數】RECT 自動估算 CPI
+        function autoCalculateRectCPI() {
+            const buyDateStr = document.getElementById('rectBuyDate').value;
+            const sellDateStr = document.getElementById('rectSellDate').value;
+            const cpiInput = document.getElementById('rectCPI');
+
+            if (!buyDateStr || !sellDateStr) {
+                cpiInput.value = (100).toFixed(2);
+                return;
+            }
+
+            try {
+                const buyDate = new Date(buyDateStr);
+                const sellDate = new Date(sellDateStr);
+
+                // 將西元年轉換為民國年
+                let prevYear = buyDate.getFullYear() - 1911;
+                let prevMonth = buyDate.getMonth() + 1;
+                let currYear = sellDate.getFullYear() - 1911;
+                let currMonth = sellDate.getMonth() + 1;
+                
+                // 檢查是否超過我們資料庫的範圍 (民國70年~114年10月)
+                // 【修正】確保 currYear/Month 不會超過 maxCpiYear/maxCpiMonth
+                if (currYear > maxCpiYear || (currYear === maxCpiYear && currMonth > maxCpiMonth)) {
+                    currYear = maxCpiYear;
+                    currMonth = maxCpiMonth;
+                }
+                if (prevYear < 70) {
+                    prevYear = 70;
+                    prevMonth = 1;
+                }
+                
+                const prevCPI = getCPIValue(prevYear, prevMonth);
+                const currCPI = getCPIValue(currYear, currMonth);
+
+                let cpi = calculateCpiPercentage(prevCPI, currCPI);
+                cpiInput.value = cpi.toFixed(2);
+
+            } catch(e) {
+                console.error("日期轉換失敗:", e);
+                cpiInput.value = (100).toFixed(2);
+            }
+        }
+
+
+        // --- 土地增值稅 ---
+        function calculateLVIT() {
+            // 讀取所有欄位
+            const prevValue_PerM2 = parseFloat(document.getElementById('lvitPrevValue_PerM2').value) || 0;
+            const currValue_PerM2 = parseFloat(document.getElementById('lvitCurrValue_PerM2').value) || 0;
+            const area = parseFloat(document.getElementById('lvitArea').value) || 0;
+            const cpi = parseFloat(document.getElementById('lvitCPI').value) || 100;
+            const rangeNum = parseFloat(document.getElementById('lvitRangeNum').value) || 1;
+            const rangeDen = parseFloat(document.getElementById('lvitRangeDen').value) || 1;
+            
+            if (area === 0 || currValue_PerM2 === 0 || rangeDen === 0) {
+                alert("面積、本次現值 和 移轉分母 不得為 0");
+                return;
+            }
+
+            const range = rangeNum / rangeDen;
+            if (range > 1 || range <= 0) {
+                alert("移轉範圍必須介於 0 和 1 之間");
+                return;
+            }
+
+            // 1. 計算調整後的前次現值 (基數)
+            const adjustedPrevValue_Total = (prevValue_PerM2 * (cpi / 100)) * area;
+            // 2. 計算本次現值
+            const currValue_Total = currValue_PerM2 * area;
+            // 3. 計算漲價總數額
+            const increment_Total = currValue_Total - adjustedPrevValue_Total;
+
+            if (increment_Total <= 0) {
+                document.getElementById('lvitResult').classList.remove('hidden');
+                document.querySelector('#lvitResult .result-amount').textContent = '0 元';
+                document.getElementById('lvitIncrement').textContent = formatMoney(0);
+                document.getElementById('lvitBaseValue').textContent = formatMoney(0);
+                return;
+            }
+
+            // 4. 按移轉範圍打折
+            const final_increment = increment_Total * range;
+            const final_base_value = adjustedPrevValue_Total * range;
+            
+            // 5. 計算稅額 (僅一般稅率)
+            let tax = 0;
+            const multiplier = (final_base_value === 0) ? Infinity : (final_increment / final_base_value);
+            
+            if (multiplier <= 1) { // 漲價 < 100%
+                tax = final_increment * 0.2;
+            } else if (multiplier <= 2) { // 漲價 < 200%
+                tax = (final_increment * 0.3) - (final_base_value * 0.1);
+            } else { // 漲價 > 200%
+                tax = (final_increment * 0.4) - (final_base_value * 0.3);
+            }
+
+            document.getElementById('lvitResult').classList.remove('hidden');
+            document.querySelector('#lvitResult .result-amount').textContent = `${formatMoney(tax)} 元`;
+            document.getElementById('lvitIncrement').textContent = formatMoney(final_increment);
+            document.getElementById('lvitBaseValue').textContent = formatMoney(final_base_value);
+        }
+
+        function clearLVIT() {
+            document.getElementById('lvitPrevValue_PerM2').value = '';
+            document.getElementById('lvitCurrValue_PerM2').value = '';
+            document.getElementById('lvitArea').value = '';
+            document.getElementById('lvitCPI').value = '';
+            document.getElementById('lvitRangeNum').value = '1';
+            document.getElementById('lvitRangeDen').value = '1';
+            document.getElementById('lvitResult').classList.add('hidden');
+            // 重設年期
+            populateDateSelects();
+        }
+
+        // --- 房地合一稅 ---
+        
+        // 輔助函式：計算持有天數
+        function getHoldDays(buyDateStr, sellDateStr) {
+            try {
+                const buyDate = new Date(buyDateStr);
+                const sellDate = new Date(sellDateStr);
+                if (isNaN(buyDate) || isNaN(sellDate)) return 0;
+                
+                // +1 是因為稅法計算包含取得當日
+                const diffTime = Math.abs(sellDate - buyDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                return diffDays;
+            } catch(e) {
+                return 0;
+            }
+        }
+        
+        // 輔助函式：更新稅率下拉選單
+        function updateTaxRate() {
+            const buyDateStr = document.getElementById('rectBuyDate').value;
+            const sellDateStr = document.getElementById('rectSellDate').value;
+            const isDomestic = document.querySelector('input[name="rectLocation"]:checked').value === 'domestic';
+            const taxRateSelect = document.getElementById('rectTaxRateSelect');
+            
+            if (!buyDateStr || !sellDateStr) {
+                taxRateSelect.value = isDomestic ? "0.45" : "0.45_foreign";
+                return;
+            }
+
+            const days = getHoldDays(buyDateStr, sellDateStr);
+            const years = days / 365.25;
+            
+            let autoRateValue = "0.45"; // 預設
+
+            if (isDomestic) {
+                if (years <= 2) {
+                    autoRateValue = "0.45";
+                } else if (years <= 5) {
+                    autoRateValue = "0.35";
+                } else if (years <= 10) {
+                    autoRateValue = "0.20";
+                } else {
+                    autoRateValue = "0.15";
+                }
+            } else { // 境外
+                if (years <= 2) {
+                    autoRateValue = "0.45_foreign";
+                } else {
+                    autoRateValue = "0.35_foreign";
+                }
+            }
+            
+            // 僅「預選」
+            taxRateSelect.value = autoRateValue;
+        }
+
+        function calculateRECT() {
+            const sellPrice = parseFloat(document.getElementById('rectSellPrice').value) || 0;
+            const buyPrice = parseFloat(document.getElementById('rectBuyPrice').value) || 0;
+            const cpi = parseFloat(document.getElementById('rectCPI').value) || 100;
+            let costs = parseFloat(document.getElementById('rectCosts').value);
+            const lvitAmount = parseFloat(document.getElementById('rectLvitAmount').value) || 0;
+            
+            const buyDateStr = document.getElementById('rectBuyDate').value;
+            const sellDateStr = document.getElementById('rectSellDate').value;
+            const rateValue = document.getElementById('rectTaxRateSelect').value;
+            
+            if (sellPrice === 0 || buyPrice === 0 || !buyDateStr || !sellDateStr) {
+                alert("請輸入成交價、取得價款及買賣日期！");
+                return;
+            }
+            
+            // 處理「相關費用」的 3% / 30萬 邏輯
+            if (isNaN(costs) || costs === 0) {
+                costs = Math.min(sellPrice * 0.03, 300000);
+            }
+            
+            // 1. 調整取得成本
+            const adjustedBuyPrice = buyPrice * (cpi / 100);
+            
+            // 2. 計算課稅所得
+            let taxableIncome = sellPrice - adjustedBuyPrice - costs - lvitAmount;
+            
+            // 3. 處理稅率和自用優惠
+            let tax = 0;
+            let finalRate = 0;
+            
+            if (rateValue === '0.10_self_use') {
+                // 自用住宅優惠
+                let incomeAfterExemption = Math.max(0, taxableIncome - 4000000);
+                tax = incomeAfterExemption * 0.10;
+                finalRate = 0.10;
+            } else {
+                // 一般或特殊稅率
+                finalRate = parseFloat(rateValue); // e.g., "0.45", "0.20_special" -> 0.45, 0.20
+                if (isNaN(finalRate)) finalRate = 0.45; // 防呆
+                
+                tax = Math.max(0, taxableIncome) * finalRate;
+            }
+
+            // 顯示結果
+            const days = getHoldDays(buyDateStr, sellDateStr);
+            const years = (days / 365.25).toFixed(1);
+            
+            document.getElementById('rectResult').classList.remove('hidden');
+            document.querySelector('#rectResult .result-amount').textContent = `${formatMoney(tax)} 元`;
+            document.getElementById('rectIncome').textContent = formatMoney(taxableIncome);
+            document.getElementById('rectHoldYears').textContent = `${years} 年 (${days} 天)`;
+        }
+
+        function clearRECT() {
+            document.getElementById('rectSellPrice').value = '';
+            document.getElementById('rectBuyPrice').value = '';
+            document.getElementById('rectBuyDate').value = '';
+            document.getElementById('rectSellDate').value = '';
+            document.getElementById('rectCPI').value = '';
+            document.getElementById('rectCosts').value = '';
+            document.getElementById('rectLvitAmount').value = '';
+            document.querySelector('input[name="rectLocation"][value="domestic"]').checked = true;
+            document.getElementById('rectTaxRateSelect').value = "0.45";
+            document.getElementById('rectResult').classList.add('hidden');
+        }
+
+
+        // --- 頁面初始化 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // 填充土增稅的年/月下拉選單
+            populateDateSelects();
+            
+            // 預設顯示房貸頁面
+            showPage('mortgage');
+
+            // 頁面載入時，為土增稅預先估算CPI
+            autoCalculateLvitCPI();
+            // 房地合一的日期預設為空，先不估算
+        });
+    </script>
+</body>
+</html>
+
+
