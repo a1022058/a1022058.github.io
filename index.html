@@ -61,6 +61,24 @@
             border-color: #007bff;
             box-shadow: 0 0 0 3px rgba(0,123,255,0.2);
         }
+        /* 【新增】Checkbox 樣式 */
+        .form-checkbox {
+            height: 1.15em;
+            width: 1.15em;
+            border-radius: 0.25rem;
+            border: 1px solid #ced4da;
+            color: #007bff;
+            transition: all 0.2s ease;
+        }
+        .form-checkbox:checked {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        .form-checkbox:focus {
+             outline: none;
+             box-shadow: 0 0 0 3px rgba(0,123,255,0.2);
+        }
+
         .result-box {
             background-color: #f8f9fa;
             border: 1px dashed #ced4da;
@@ -224,7 +242,6 @@
                         <select id="lvitPrevMonth" class="form-select" onchange="autoCalculateLvitCPI()"></select>
                     </div>
                 </div>
-                <!-- 【移除】本次移轉年期 (參考用) 的區塊 -->
                 
                 <!-- 現值 -->
                 <div class="grid grid-cols-2 gap-4 mt-4">
@@ -270,6 +287,16 @@
                     </div>
                     <p class="text-xs text-gray-500 mt-1">請參閱土地權狀影本的土地標示部之使用分區，使用地類別空白者，請點選都市土地。</p>
                 </div>
+
+                <!-- 【新增】自用住宅 -->
+                <div class="mt-4">
+                    <label class="flex items-center">
+                        <input type="checkbox" id="lvitSelfUse" class="form-checkbox mr-2">
+                        <span class="font-medium text-gray-700">符合自用住宅優惠稅率 (10%)</span>
+                    </label>
+                    <p class="text-xs text-gray-500 mt-1">需符合「一生一次」或「一生一屋」條件。</p>
+                </div>
+
                 <!-- 按鈕 -->
                 <div class="flex gap-4 mt-6">
                     <button onclick="calculateLVIT()" class="btn btn-primary w-full" style="background-color: #6f42c1; hover:bg-purple-800">開始試算</button>
@@ -277,7 +304,8 @@
                 </div>
                 <!-- 結果 -->
                 <div id="lvitResult" class="result-box mt-6 hidden">
-                    <p class="result-title">預估土地增值稅（一般稅率）</p>
+                    <!-- 【修改】加上 ID -->
+                    <p class="result-title" id="lvitResultTitle">預估土地增值稅（一般稅率）</p>
                     <p class="result-amount" style="color: #6f42c1;">0 元</p>
                     <div class="text-sm text-gray-600 grid grid-cols-2 gap-2 mt-4">
                         <p>漲價總數額： <span id="lvitIncrement" class="font-bold">0</span></p>
@@ -457,18 +485,11 @@
             const yearSelect = document.getElementById('lvitPrevYear');
             const monthSelect = document.getElementById('lvitPrevMonth');
             
-            // 【移除】currYearSelect 和 currMonthSelect
-            // const currYearSelect = document.getElementById('lvitCurrYear');
-            // const currMonthSelect = document.getElementById('lvitCurrMonth');
-
-            if (!yearSelect || !monthSelect) return; // 【修改】簡化檢查
+            if (!yearSelect || !monthSelect) return; 
 
             // 清空舊選項
             yearSelect.innerHTML = '';
             monthSelect.innerHTML = '';
-            // 【移除】
-            // currYearSelect.innerHTML = '';
-            // currMonthSelect.innerHTML = '';
 
             // 填充月份
             for (let m = 1; m <= 12; m++) {
@@ -476,34 +497,20 @@
                 option.value = m;
                 option.textContent = `${m} 月`;
                 monthSelect.appendChild(option);
-                
-                // 【移除】
-                // const option2 = option.cloneNode(true);
-                // currMonthSelect.appendChild(option2);
             }
 
-            // 【關鍵修正】我們顯示 48~maxCpiYear 所有的年份
-            // (根據您的 CSV，最早到民國48年)
+            // 顯示 48~maxCpiYear 所有的年份
             for (let year = maxCpiYear; year >= 48; year--) {
                 const option = document.createElement('option');
                 option.value = year;
                 option.textContent = `民國 ${year} 年`;
                 yearSelect.appendChild(option);
-
-                // 【移除】
-                // const option2 = option.cloneNode(true);
-                // currYearSelect.appendChild(option2);
             }
             
             // 預設選取
             let defaultPrevYear = (maxCpiYear - 1 < 48) ? 48 : maxCpiYear - 1;
             yearSelect.value = defaultPrevYear; // 預設前一年
             monthSelect.value = "1";
-            
-            // 【移除】
-            // 預設選取今年 (114) 和 本月 (9)
-            // currYearSelect.value = maxCpiYear;
-            // currMonthSelect.value = maxCpiMonth;
         }
 
 
@@ -661,6 +668,10 @@
             const rangeNum = parseFloat(document.getElementById('lvitRangeNum').value) || 1;
             const rangeDen = parseFloat(document.getElementById('lvitRangeDen').value) || 1;
             
+            // 【新增】讀取自用住宅勾選
+            const isSelfUse = document.getElementById('lvitSelfUse').checked;
+            const resultTitle = document.getElementById('lvitResultTitle');
+
             if (area === 0 || currValue_PerM2 === 0 || rangeDen === 0) {
                 alert("面積、本次現值 和 移轉分母 不得為 0");
                 return;
@@ -681,6 +692,7 @@
 
             if (increment_Total <= 0) {
                 document.getElementById('lvitResult').classList.remove('hidden');
+                resultTitle.textContent = '預估土地增值稅';
                 document.querySelector('#lvitResult .result-amount').textContent = '0 元';
                 document.getElementById('lvitIncrement').textContent = formatMoney(0);
                 document.getElementById('lvitBaseValue').textContent = formatMoney(0);
@@ -691,16 +703,25 @@
             const final_increment = increment_Total * range;
             const final_base_value = adjustedPrevValue_Total * range;
             
-            // 5. 計算稅額 (僅一般稅率)
+            // 5. 計算稅額
             let tax = 0;
-            const multiplier = (final_base_value === 0) ? Infinity : (final_increment / final_base_value);
             
-            if (multiplier <= 1) { // 漲價 < 100%
-                tax = final_increment * 0.2;
-            } else if (multiplier <= 2) { // 漲價 < 200%
-                tax = (final_increment * 0.3) - (final_base_value * 0.1);
-            } else { // 漲價 > 200%
-                tax = (final_increment * 0.4) - (final_base_value * 0.3);
+            if (isSelfUse) {
+                // 【新增】自用稅率
+                tax = final_increment * 0.10;
+                resultTitle.textContent = '預估土地增值稅（自用稅率 10%）';
+            } else {
+                // 一般稅率
+                const multiplier = (final_base_value === 0) ? Infinity : (final_increment / final_base_value);
+                
+                if (multiplier <= 1) { // 漲價 < 100%
+                    tax = final_increment * 0.2;
+                } else if (multiplier <= 2) { // 漲價 < 200%
+                    tax = (final_increment * 0.3) - (final_base_value * 0.1);
+                } else { // 漲價 > 200%
+                    tax = (final_increment * 0.4) - (final_base_value * 0.3);
+                }
+                resultTitle.textContent = '預估土地增值稅（一般稅率）';
             }
 
             document.getElementById('lvitResult').classList.remove('hidden');
@@ -716,6 +737,7 @@
             document.getElementById('lvitCPI').value = '';
             document.getElementById('lvitRangeNum').value = '';
             document.getElementById('lvitRangeDen').value = '';
+            document.getElementById('lvitSelfUse').checked = false; // 【新增】清除勾選
             document.getElementById('lvitResult').classList.add('hidden');
             // 重設年期
             populateDateSelects();
