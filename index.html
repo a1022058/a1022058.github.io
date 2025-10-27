@@ -287,8 +287,6 @@
                     <p class="text-xs text-gray-500 mt-1">請參閱土地權狀影本的土地標示部之使用分區，使用地類別空白者，請點選都市土地。</p>
                 </div>
 
-                <!-- 【移除】自用住宅 Checkbox -->
-
                 <!-- 按鈕 -->
                 <div class="flex gap-4 mt-6">
                     <button onclick="calculateLVIT()" class="btn btn-primary w-full" style="background-color: #6f42c1; hover:bg-purple-800">開始試算</button>
@@ -336,17 +334,27 @@
                         <input type="number" id="rectBuyPrice" class="form-input" placeholder="10,000,000">
                     </div>
                 </div>
-                <!-- 日期 -->
+                
+                <!-- 【修改】日期 -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     <div>
-                        <label for="rectBuyDate" class="form-label">買入日</label>
-                        <input type="date" id="rectBuyDate" class="form-input" onchange="autoCalculateRectCPI(); updateTaxRate();">
+                        <label class="form-label">買入日</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <select id="rectBuyYear" class="form-select" onchange="autoCalculateRectCPI(); updateTaxRate();"></select>
+                            <select id="rectBuyMonth" class="form-select" onchange="autoCalculateRectCPI(); updateTaxRate();"></select>
+                            <select id="rectBuyDay" class="form-select" onchange="autoCalculateRectCPI(); updateTaxRate();"></select>
+                        </div>
                     </div>
                     <div>
-                        <label for="rectSellDate" class="form-label">賣出日</label>
-                        <input type="date" id="rectSellDate" class="form-input" onchange="autoCalculateRectCPI(); updateTaxRate();">
+                        <label class="form-label">賣出日</label>
+                         <div class="grid grid-cols-3 gap-2">
+                            <select id="rectSellYear" class="form-select" onchange="autoCalculateRectCPI(); updateTaxRate();"></select>
+                            <select id="rectSellMonth" class="form-select" onchange="autoCalculateRectCPI(); updateTaxRate();"></select>
+                            <select id="rectSellDay" class="form-select" onchange="autoCalculateRectCPI(); updateTaxRate();"></select>
+                        </div>
                     </div>
                 </div>
+
                 <!-- CPI / 費用 -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     <div>
@@ -421,6 +429,8 @@
         let monthlyCpiData = {};
         let maxCpiYear = 114;
         let maxCpiMonth = 9; // 根據您提供的 CSV (到114年9月)
+        let currentROCYear = 114; // 【修改】手動設定
+        let currentMonth = 10; // 【修改】手動設定
 
         // --- 導航控制 ---
         let currentPage = 'mortgage';
@@ -490,21 +500,45 @@
 
         // --- 輔助函式：填充下拉選單 ---
         function populateDateSelects() {
-            const yearSelect = document.getElementById('lvitPrevYear');
-            const monthSelect = document.getElementById('lvitPrevMonth');
+            // 【修改】抓取所有 RECT 的下拉選單
+            const lvitYearSelect = document.getElementById('lvitPrevYear');
+            const lvitMonthSelect = document.getElementById('lvitPrevMonth');
+            const rectBuyYear = document.getElementById('rectBuyYear');
+            const rectBuyMonth = document.getElementById('rectBuyMonth');
+            const rectBuyDay = document.getElementById('rectBuyDay');
+            const rectSellYear = document.getElementById('rectSellYear');
+            const rectSellMonth = document.getElementById('rectSellMonth');
+            const rectSellDay = document.getElementById('rectSellDay');
             
-            if (!yearSelect || !monthSelect) return; 
+            if (!lvitYearSelect || !rectBuyYear) return; 
 
             // 清空舊選項
-            yearSelect.innerHTML = '';
-            monthSelect.innerHTML = '';
+            lvitYearSelect.innerHTML = '';
+            lvitMonthSelect.innerHTML = '';
+            rectBuyYear.innerHTML = '';
+            rectBuyMonth.innerHTML = '';
+            rectBuyDay.innerHTML = '';
+            rectSellYear.innerHTML = '';
+            rectSellMonth.innerHTML = '';
+            rectSellDay.innerHTML = '';
 
             // 填充月份
             for (let m = 1; m <= 12; m++) {
                 const option = document.createElement('option');
                 option.value = m;
                 option.textContent = `${m} 月`;
-                monthSelect.appendChild(option);
+                lvitMonthSelect.appendChild(option);
+                rectBuyMonth.appendChild(option.cloneNode(true));
+                rectSellMonth.appendChild(option.cloneNode(true));
+            }
+            
+            // 【新增】填充日期
+             for (let d = 1; d <= 31; d++) {
+                const option = document.createElement('option');
+                option.value = d;
+                option.textContent = `${d} 日`;
+                rectBuyDay.appendChild(option);
+                rectSellDay.appendChild(option.cloneNode(true));
             }
 
             // 顯示 48~maxCpiYear 所有的年份
@@ -512,13 +546,23 @@
                 const option = document.createElement('option');
                 option.value = year;
                 option.textContent = `民國 ${year} 年`;
-                yearSelect.appendChild(option);
+                lvitYearSelect.appendChild(option);
+                rectBuyYear.appendChild(option.cloneNode(true));
+                rectSellYear.appendChild(option.cloneNode(true));
             }
             
-            // 預設選取
-            let defaultPrevYear = (maxCpiYear - 1 < 48) ? 48 : maxCpiYear - 1;
-            yearSelect.value = defaultPrevYear; // 預設前一年
-            monthSelect.value = "1";
+            // 預設選取 LVIT
+            let defaultPrevYear = (currentROCYear - 1 < 48) ? 48 : currentROCYear - 1;
+            lvitYearSelect.value = defaultPrevYear; // 預設前一年
+            lvitMonthSelect.value = "1";
+            
+            // 【新增】預設選取 RECT
+            rectBuyYear.value = defaultPrevYear;
+            rectBuyMonth.value = "1";
+            rectBuyDay.value = "1";
+            rectSellYear.value = currentROCYear;
+            rectSellMonth.value = currentMonth;
+            rectSellDay.value = "1"; // 預設1號
         }
 
 
@@ -620,22 +664,34 @@
             let cpi = calculateCpiPercentage(prevCPI, currCPI);
             cpiInput.value = cpi.toFixed(1);
         }
+        
+        // 【新增】輔助函式：從 RECT 下拉選單取得日期物件
+        function getRectDate(type) {
+            const year = parseInt(document.getElementById(`rect${type}Year`).value);
+            const month = parseInt(document.getElementById(`rect${type}Month`).value);
+            const day = parseInt(document.getElementById(`rect${type}Day`).value);
+
+            if (isNaN(year) || isNaN(month) || isNaN(day)) {
+                return null;
+            }
+            // Convert ROC year to Gregorian year, JS month is 0-indexed
+            return new Date(year + 1911, month - 1, day);
+        }
+
 
         // 【月指數】RECT 自動估算 CPI
         function autoCalculateRectCPI() {
-            const buyDateStr = document.getElementById('rectBuyDate').value;
-            const sellDateStr = document.getElementById('rectSellDate').value;
+            // 【修改】改用 getRectDate 函式
+            const buyDate = getRectDate('Buy');
+            const sellDate = getRectDate('Sell');
             const cpiInput = document.getElementById('rectCPI');
 
-            if (!buyDateStr || !sellDateStr) {
+            if (!buyDate || !sellDate || isNaN(buyDate) || isNaN(sellDate)) {
                 cpiInput.value = (100).toFixed(1);
                 return;
             }
 
             try {
-                const buyDate = new Date(buyDateStr);
-                const sellDate = new Date(sellDateStr);
-
                 // 將西元年轉換為民國年
                 let prevYear = buyDate.getFullYear() - 1911;
                 let prevMonth = buyDate.getMonth() + 1;
@@ -675,9 +731,6 @@
             const cpi = parseFloat(document.getElementById('lvitCPI').value) || 100;
             const rangeNum = parseFloat(document.getElementById('lvitRangeNum').value) || 1;
             const rangeDen = parseFloat(document.getElementById('lvitRangeDen').value) || 1;
-            
-            // 【移除】讀取自用住宅勾選
-            // const isSelfUse = document.getElementById('lvitSelfUse').checked;
             
             // 【新增】抓取新的結果欄位
             const resultBox = document.getElementById('lvitResult');
@@ -758,8 +811,6 @@
             document.getElementById('lvitCPI').value = '';
             document.getElementById('lvitRangeNum').value = '';
             document.getElementById('lvitRangeDen').value = '';
-            // 【移除】清除勾選
-            // document.getElementById('lvitSelfUse').checked = false; 
             document.getElementById('lvitResult').classList.add('hidden');
             // 重設年期
             populateDateSelects();
@@ -768,11 +819,9 @@
         // --- 房地合一稅 ---
         
         // 輔助函式：計算持有天數
-        function getHoldDays(buyDateStr, sellDateStr) {
+        function getHoldDays(buyDate, sellDate) { // 【修改】參數改為 Date 物件
             try {
-                const buyDate = new Date(buyDateStr);
-                const sellDate = new Date(sellDateStr);
-                if (isNaN(buyDate) || isNaN(sellDate)) return 0;
+                if (!buyDate || !sellDate || isNaN(buyDate) || isNaN(sellDate)) return 0;
                 
                 // +1 是因為稅法計算包含取得當日
                 const diffTime = Math.abs(sellDate - buyDate);
@@ -785,17 +834,18 @@
         
         // 輔助函式：更新稅率下拉選單
         function updateTaxRate() {
-            const buyDateStr = document.getElementById('rectBuyDate').value;
-            const sellDateStr = document.getElementById('rectSellDate').value;
+            // 【修改】改用 getRectDate
+            const buyDate = getRectDate('Buy');
+            const sellDate = getRectDate('Sell');
             const isDomestic = document.querySelector('input[name="rectLocation"]:checked').value === 'domestic';
             const taxRateSelect = document.getElementById('rectTaxRateSelect');
             
-            if (!buyDateStr || !sellDateStr) {
+            if (!buyDate || !sellDate) {
                 taxRateSelect.value = isDomestic ? "0.45" : "0.45_foreign";
                 return;
             }
 
-            const days = getHoldDays(buyDateStr, sellDateStr);
+            const days = getHoldDays(buyDate, sellDate); // 【修改】傳入 Date 物件
             const years = days / 365.25;
             
             let autoRateValue = "0.45"; // 預設
@@ -829,11 +879,12 @@
             let costs = parseFloat(document.getElementById('rectCosts').value);
             const lvitAmount = parseFloat(document.getElementById('rectLvitAmount').value) || 0;
             
-            const buyDateStr = document.getElementById('rectBuyDate').value;
-            const sellDateStr = document.getElementById('rectSellDate').value;
+            // 【修改】改用 getRectDate
+            const buyDate = getRectDate('Buy');
+            const sellDate = getRectDate('Sell');
             const rateValue = document.getElementById('rectTaxRateSelect').value;
             
-            if (sellPrice === 0 || buyPrice === 0 || !buyDateStr || !sellDateStr) {
+            if (sellPrice === 0 || buyPrice === 0 || !buyDate || !sellDate) {
                 alert("請輸入成交價、取得價款及買賣日期！");
                 return;
             }
@@ -867,7 +918,7 @@
             }
 
             // 顯示結果
-            const days = getHoldDays(buyDateStr, sellDateStr);
+            const days = getHoldDays(buyDate, sellDate); // 【修改】傳入 Date 物件
             const years = (days / 365.25).toFixed(1);
             
             document.getElementById('rectResult').classList.remove('hidden');
@@ -877,10 +928,19 @@
         }
 
         function clearRECT() {
+            // 【修改】清除下拉選單
             document.getElementById('rectSellPrice').value = '';
             document.getElementById('rectBuyPrice').value = '';
-            document.getElementById('rectBuyDate').value = '';
-            document.getElementById('rectSellDate').value = '';
+            
+            // 重設下拉選單為預設值
+            const defaultPrevYear = (currentROCYear - 1 < 48) ? 48 : currentROCYear - 1;
+            document.getElementById('rectBuyYear').value = defaultPrevYear;
+            document.getElementById('rectBuyMonth').value = "1";
+            document.getElementById('rectBuyDay').value = "1";
+            document.getElementById('rectSellYear').value = currentROCYear;
+            document.getElementById('rectSellMonth').value = currentMonth;
+            document.getElementById('rectSellDay').value = "1";
+
             document.getElementById('rectCPI').value = '';
             document.getElementById('rectCosts').value = '';
             document.getElementById('rectLvitAmount').value = '';
@@ -892,6 +952,17 @@
 
         // --- 頁面初始化 ---
         document.addEventListener('DOMContentLoaded', () => {
+            // 【新增】設定目前民國年月
+            const now = new Date();
+            currentROCYear = now.getFullYear() - 1911;
+            currentMonth = now.getMonth() + 1;
+            // 檢查是否超過資料庫最大值
+            if (currentROCYear > maxCpiYear || (currentROCYear === maxCpiYear && currentMonth > maxCpiMonth)) {
+                currentROCYear = maxCpiYear;
+                currentMonth = maxCpiMonth;
+            }
+
+
             const loader = document.getElementById('loader');
             const errorMessage = document.getElementById('error-message');
             const appContainer = document.getElementById('app-container');
@@ -919,6 +990,8 @@
                     showPage('mortgage');
                     // 頁面載入時，為土增稅預先估算CPI
                     autoCalculateLvitCPI();
+                    // 頁面載入時，為房地合一稅預先估算CPI
+                    autoCalculateRectCPI();
                 })
                 .catch(error => {
                     // 載入失敗
