@@ -612,7 +612,8 @@
             const currCPI = getCPIValue(currYear, currMonth);
             
             let cpi = calculateCpiPercentage(prevCPI, currCPI);
-            cpiInput.value = cpi.toFixed(2);
+            // 【修改】改為小數點後一位
+            cpiInput.value = cpi.toFixed(1);
         }
 
         // 【月指數】RECT 自動估算 CPI
@@ -650,7 +651,8 @@
                 const currCPI = getCPIValue(currYear, currMonth);
 
                 let cpi = calculateCpiPercentage(prevCPI, currCPI);
-                cpiInput.value = cpi.toFixed(2);
+                // 【修改】改為小數點後一位
+                cpiInput.value = cpi.toFixed(1);
 
             } catch(e) {
                 console.error("日期轉換失敗:", e);
@@ -898,4 +900,5 @@
     </script>
 </body>
 </html>
+
 
